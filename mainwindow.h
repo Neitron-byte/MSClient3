@@ -3,11 +3,12 @@
 
 #include <QMainWindow>
 #include <QTCPSocket>
+#include <QUdpSocket>
 #include <QProcess>
 #include <QDebug>
 #include <QDir>
 #include <QByteArray>
-
+#include <QDataStream>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -21,6 +22,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void slotSendDatagram();
+    void slotProcessDatagram();
 
 private slots:
     void on_pushButton_clicked();
@@ -29,14 +33,18 @@ private slots:
     void on_pushButton_3_clicked();
 
     void on_pushButton_2_clicked();
+    void on_pushButton_Discon_clicked();
 
 private:
     Ui::MainWindow *ui;
     QProcess* m_process = nullptr;
     QString m_IP;
-    int m_port;
+    QString m_port;
     QString m_user;
     QString  m_pass;
+
+    QUdpSocket* m_udp;
+    QUdpSocket* m_udpReceiver;
 
     enum class CommandToServer : quint8
         {
@@ -50,7 +58,10 @@ private:
                Dis = 0x2, // disconnect
 
         };
-
+    void writeDATA(Type);
+    void TestWrite();
 
 };
+
+
 #endif // MAINWINDOW_H

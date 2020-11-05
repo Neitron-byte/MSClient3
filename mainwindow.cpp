@@ -13,15 +13,47 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_Pass->setText("1");
 
 
-
-
     m_process = new QProcess(this);
     connect(m_process,SIGNAL(started()),this,SLOT(started()));
+
+    m_udp = new QUdpSocket(this);
+
+    m_udpReceiver = new QUdpSocket(this);
+    connect(m_udpReceiver,SIGNAL(readyRead()),this, SLOT(slotProcessDatagram()));
+    m_udpReceiver->bind(4101);
+
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::slotSendDatagram()
+{
+
+}
+
+void MainWindow::slotProcessDatagram()
+{
+     QByteArray RecDatagram;
+
+//    do {
+//        RecDatagram.resize(m_udpReceiver->pendingDatagramSize());
+//        m_udpReceiver->readDatagram(RecDatagram.data(), RecDatagram.size());
+//    }
+
+//    while(m_udpReceiver->hasPendingDatagrams());
+
+     RecDatagram.resize(m_udpReceiver->pendingDatagramSize());
+     m_udpReceiver->readDatagram(RecDatagram.data(), RecDatagram.size());
+
+     for (int i = 0; i < RecDatagram.length(); ++i) {
+         qDebug() << QString::number(RecDatagram[i],16);
+     }
+
+
+
 }
 
 
@@ -45,70 +77,158 @@ void MainWindow::started()
 void MainWindow::on_pushButton_3_clicked()
 {
    m_IP = ui->lineEdit_IP->text();
-   m_port = ui->lineEdit_PORT->text().toInt();
+   m_port = ui->lineEdit_PORT->text();
    m_user = ui->lineEdit_User->text();
    m_pass = ui->lineEdit_Pass->text();
    qDebug()<< m_IP << m_port << m_user << m_pass;
-
 
 }
 
 void MainWindow::on_pushButton_2_clicked()
 {
 
-   //const char myData [] = {0x10,0x00,0x00,0x00,0x00,0x00, длина, Data };
+    //this->writeDATA(Type::Con);
+    this->TestWrite();
 
+}
+
+void MainWindow::on_pushButton_Discon_clicked()
+{
+    this->writeDATA(Type::Dis);
+}
+
+void MainWindow::writeDATA(Type typeCommand)
+{
     QByteArray sendData;
-    //sendData.resize(2);
-    sendData+=0x01;//0x01 - Connect
+   //sendData.resize(2);
+   sendData.append(static_cast<quint8>(typeCommand)); //0x01 - Connect 0x2 - Disconnect
 
-    //User данные
-    sendData+=static_cast<quint16>(m_user.length());
-    qDebug() << QString::number(sendData[1],16);
-    sendData += m_user.toLocal8Bit();
+   //User данные
+   sendData.append(static_cast<quint8>(0x00));
+   sendData.append(static_cast<quint8>(m_user.length()));
 
-    //Password
-    sendData+=static_cast<quint16>(m_pass.length());
-    sendData += m_pass.toLocal8Bit();
-
-    //IP
-    sendData+=static_cast<quint16>(m_IP.length());
-    sendData += m_IP.toLocal8Bit();
-
-    //Port
-
-    sendData+=static_cast<quint32>(m_port);
+   //qDebug() << QString::number(sendData[1],16);
+   sendData.append(m_user.toLocal8Bit());
 
 
-    //qDebug()<<"LenghtSendData:" << sendData.length();
+   //Password
+   sendData.append(static_cast<quint8>(0x00));
+   sendData.append(static_cast<quint8>(m_pass.length()));
+   sendData.append(m_pass.toLocal8Bit());
 
-    for (int i = 0; i < sendData.length(); ++i) {
-          qDebug() << QString::number(sendData[i],10) << i;
-    }
+   //IP
+   sendData.append(static_cast<quint8>(0x00));
+   sendData.append(static_cast<quint8>(m_IP.length()));
+   sendData.append(m_IP.toLocal8Bit());
 
+   //Port
 
-
-
-    QByteArray Request;
-    Request.resize(8 + sendData.length());
-    Request[0] = 0x10; //Команад
-    Request[1] = 0x00; //Not used
-    Request[2] = 0x00; //Encry index
-    Request[3] = 0x00; //Encry index
-    Request[4] = 0x00; //Encry value
-    Request[5] = 0x00; //Encry value
-    Request += static_cast<quint16>(sendData.length()); //Lenght данных
-    Request += sendData;
+   sendData.append(m_port.toLocal8Bit());
 
 
-    qDebug()<<"LenghtRequest: " << Request.length();
+//    qDebug()<< "DATA";
+//    qDebug()<<"LenghtSendData:" << sendData.length();
+//    for (int i = 0; i < sendData.length(); ++i) {
+//       qDebug()<< QString::number(sendData[i],16) << i;
+//    }
 
-    m_process->write(Request);
-    m_process->waitForBytesWritten();
+   qDebug()<<"LenghtSendData:" << sendData.length();
 
-    m_process->waitForReadyRead();
-    qDebug()<< m_process->readAll();
 
-    
+
+   QByteArray Request;
+   //Request.resize(8 + sendData.length());
+   Request.append(static_cast<quint8>(0x10)); //Команад
+   Request.append(static_cast<quint8>(0x00)); //Not used
+   Request.append(static_cast<quint8>(0x00)); //Encry index
+   Request.append(static_cast<quint8>(0x00)); //Encry index
+   Request.append(static_cast<quint8>(0x00)); //Encry value
+   Request.append(static_cast<quint8>(0x00)); //Encry value
+   Request.append(static_cast<quint8>(0x00)); //Lenght1
+   Request.append(static_cast<quint8>(sendData.length())); //Lenght2 данных
+   //qDebug()<<"LenghtRequest: " << static_cast<quint16>(sendData.length()) << Request.length();
+
+//    for (int i = 0; i < Request.length(); ++i) {
+//              qDebug() << QString::number(Request[i],10) << i;
+//        }
+
+   Request.append(sendData);
+
+
+   qDebug()<<"LenghtRequest: " << Request.length();
+
+   for (int i = 0; i < Request.length(); ++i) {
+         qDebug() << QString::number(Request[i],16) << i;
+   }
+
+
+//    m_process->write(Request);
+//    m_process->waitForBytesWritten();
+
+//    m_process->waitForReadyRead();
+//    qDebug()<< m_process->readAllStandardOutput();
+
+   m_udp->writeDatagram(Request,QHostAddress::LocalHost,4100);
+
+}
+
+void MainWindow::TestWrite()
+{
+
+        QByteArray Data;
+
+        Data.resize(31);
+
+        Data[0] = 0x10;
+
+        Data[1] = 0x00;
+        Data[2] = 0x00;
+        Data[3] = 0x00;
+        Data[4] = 0x00;
+        Data[5] = 0x00;
+        Data[6] = 0x00;
+        Data[7] = 0x17;
+        Data[8] = 0x01;//type
+
+//        for (int i = 9; i < 34; ++i) {
+//             Data[i] = 0x00;
+//         }
+
+        Data[9] = 0x00;
+        Data[10] = 0x01;//ID
+        Data[11] = 0x01;
+
+        Data[12] = 0x00;//pas
+        Data[13] = 0x01;
+        Data[14] = 0x01;
+
+        Data[15] = 0x00;//IP
+        Data[16] = 0x0a;
+
+        Data[17] = 0x01;
+        Data[18] = 0x09;
+        Data[19] = 0x02;
+        //Data[20] = 0x2e;
+        Data[20] = 0x01;
+        Data[21] = 0x06;
+        Data[22] = 0x08;
+        //Data[24] = 0x2e;
+        Data[23] = 0x08;
+        //Data[26] = 0x2e;
+        Data[24] = 0x02;
+        Data[25] = 0x04;
+        Data[26] = 0x04;
+
+        Data[27] = 0x04;
+        Data[28] = 0x01;
+        Data[29] = 0x00;
+        Data[30] = 0x01;
+
+        for (int i = 0; i < Data.length(); ++i) {
+            qDebug()<< QString::number(Data[i],16);
+        }
+
+        m_udp->writeDatagram(Data,QHostAddress::LocalHost,4100);
+
 
 }
