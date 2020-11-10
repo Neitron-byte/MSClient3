@@ -77,13 +77,13 @@
     <property name="geometry">
      <rect>
       <x>200</x>
-      <y>270</y>
-      <width>75</width>
+      <y>310</y>
+      <width>111</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
-     <string>Connect</string>
+     <string>SendToConnect</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="lineEdit_PORT">
@@ -149,13 +149,26 @@
     <property name="geometry">
      <rect>
       <x>200</x>
-      <y>320</y>
-      <width>75</width>
+      <y>340</y>
+      <width>111</width>
       <height>23</height>
      </rect>
     </property>
     <property name="text">
      <string>Disconnect</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_4">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>260</y>
+      <width>111</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ConnectToSrver</string>
     </property>
    </widget>
   </widget>

@@ -9,6 +9,8 @@
 #include <QDir>
 #include <QByteArray>
 #include <QDataStream>
+#include <QTcpSocket>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,16 +37,20 @@ private slots:
     void on_pushButton_2_clicked();
     void on_pushButton_Discon_clicked();
 
+    void on_pushButton_4_clicked();
+
 private:
     Ui::MainWindow *ui;
     QProcess* m_process = nullptr;
     QString m_IP;
-    QString m_port;
+    quint32 m_port;
     QString m_user;
     QString  m_pass;
 
     QUdpSocket* m_udp;
     QUdpSocket* m_udpReceiver;
+
+    QTcpSocket* m_tcp;
 
     enum class CommandToServer : quint8
         {

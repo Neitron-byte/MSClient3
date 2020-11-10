@@ -22,6 +22,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_udpReceiver,SIGNAL(readyRead()),this, SLOT(slotProcessDatagram()));
     m_udpReceiver->bind(4101);
 
+
+    m_tcp = new QTcpSocket(this);
+
+
+
 }
 
 MainWindow::~MainWindow()
@@ -77,7 +82,7 @@ void MainWindow::started()
 void MainWindow::on_pushButton_3_clicked()
 {
    m_IP = ui->lineEdit_IP->text();
-   m_port = ui->lineEdit_PORT->text();
+   m_port = ui->lineEdit_PORT->text().toUInt();
    m_user = ui->lineEdit_User->text();
    m_pass = ui->lineEdit_Pass->text();
    qDebug()<< m_IP << m_port << m_user << m_pass;
@@ -99,16 +104,21 @@ void MainWindow::on_pushButton_Discon_clicked()
 
 void MainWindow::writeDATA(Type typeCommand)
 {
+
+
     QByteArray sendData;
    //sendData.resize(2);
    sendData.append(static_cast<quint8>(typeCommand)); //0x01 - Connect 0x2 - Disconnect
 
    //User данные
    sendData.append(static_cast<quint8>(0x00));
-   sendData.append(static_cast<quint8>(m_user.length()));
+
+   quint32 user = static_cast<quint32>(m_user.toUInt());
+
+   sendData.append(static_cast<quint8>(sizeof(quint32)));
 
    //qDebug() << QString::number(sendData[1],16);
-   sendData.append(m_user.toLocal8Bit());
+   sendData.append(user);
 
 
    //Password
@@ -118,26 +128,31 @@ void MainWindow::writeDATA(Type typeCommand)
 
    //IP
    sendData.append(static_cast<quint8>(0x00));
-   sendData.append(static_cast<quint8>(m_IP.length()));
-   sendData.append(m_IP.toLocal8Bit());
+   sendData.append(static_cast<quint8>(sizeof(quint32)));
+   //sendData.append(m_IP.toLocal8Bit());
+
+
+   QHostAddress loop(m_IP);
+   quint32 address = loop.toIPv4Address();
+
+   sendData.append ( reinterpret_cast<char *>(&address) , sizeof(quint32) );
 
    //Port
+   sendData.append(reinterpret_cast<char *>(& m_port) , sizeof(quint32) );
 
-   sendData.append(m_port.toLocal8Bit());
 
-
-//    qDebug()<< "DATA";
+    qDebug()<< "DATA";
 //    qDebug()<<"LenghtSendData:" << sendData.length();
-//    for (int i = 0; i < sendData.length(); ++i) {
-//       qDebug()<< QString::number(sendData[i],16) << i;
-//    }
+    for (int i = 0; i < sendData.length(); ++i) {
+       qDebug()<< QString::number(sendData[i],16) << i;
+    }
 
    qDebug()<<"LenghtSendData:" << sendData.length();
 
 
 
    QByteArray Request;
-   //Request.resize(8 + sendData.length());
+
    Request.append(static_cast<quint8>(0x10)); //Команад
    Request.append(static_cast<quint8>(0x00)); //Not used
    Request.append(static_cast<quint8>(0x00)); //Encry index
@@ -146,10 +161,9 @@ void MainWindow::writeDATA(Type typeCommand)
    Request.append(static_cast<quint8>(0x00)); //Encry value
    Request.append(static_cast<quint8>(0x00)); //Lenght1
    Request.append(static_cast<quint8>(sendData.length())); //Lenght2 данных
-   //qDebug()<<"LenghtRequest: " << static_cast<quint16>(sendData.length()) << Request.length();
 
 //    for (int i = 0; i < Request.length(); ++i) {
-//              qDebug() << QString::number(Request[i],10) << i;
+//              qDebug() << QString::number(Request[i],16) << i;
 //        }
 
    Request.append(sendData);
@@ -157,78 +171,86 @@ void MainWindow::writeDATA(Type typeCommand)
 
    qDebug()<<"LenghtRequest: " << Request.length();
 
-   for (int i = 0; i < Request.length(); ++i) {
-         qDebug() << QString::number(Request[i],16) << i;
-   }
 
-
-//    m_process->write(Request);
-//    m_process->waitForBytesWritten();
-
-//    m_process->waitForReadyRead();
-//    qDebug()<< m_process->readAllStandardOutput();
 
    m_udp->writeDatagram(Request,QHostAddress::LocalHost,4100);
 
 }
 
+
 void MainWindow::TestWrite()
 {
 
-        QByteArray Data;
 
-        Data.resize(31);
+        QByteArray Data (17,2);
+
+        //Data.resize(24);
 
         Data[0] = 0x10;
 
-        Data[1] = 0x00;
-        Data[2] = 0x00;
+        Data[1] = 0x00;//Reserved
+
+        Data[2] = 0x00;//Encry_ind
         Data[3] = 0x00;
-        Data[4] = 0x00;
+
+        Data[4] = 0x00;//Encry_val
         Data[5] = 0x00;
+
         Data[6] = 0x00;
-        Data[7] = 0x17;
+        Data[7] = 0x11; // размер данных x16 17 байт!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
         Data[8] = 0x01;//type
 
-//        for (int i = 9; i < 34; ++i) {
-//             Data[i] = 0x00;
-//         }
 
-        Data[9] = 0x00;
-        Data[10] = 0x01;//ID
-        Data[11] = 0x01;
+        Data[9] = 0x00;//ID length
+        Data[10] = 0x01;//ID length
+        Data[11] = 0x01;//ID
 
-        Data[12] = 0x00;//pas
-        Data[13] = 0x01;
-        Data[14] = 0x01;
+        Data[12] = 0x00;//pas - l
+        Data[13] = 0x01;//pas - l
+        Data[14] = 0x01;//password
 
-        Data[15] = 0x00;//IP
-        Data[16] = 0x0a;
+        Data[15] = 0x00;//IP - l
+        Data[16] = 0x04;//IP - l
 
-        Data[17] = 0x01;
-        Data[18] = 0x09;
-        Data[19] = 0x02;
-        //Data[20] = 0x2e;
-        Data[20] = 0x01;
-        Data[21] = 0x06;
-        Data[22] = 0x08;
-        //Data[24] = 0x2e;
-        Data[23] = 0x08;
-        //Data[26] = 0x2e;
-        Data[24] = 0x02;
-        Data[25] = 0x04;
-        Data[26] = 0x04;
+//---------------IP--------------// OK
 
-        Data[27] = 0x04;
-        Data[28] = 0x01;
-        Data[29] = 0x00;
-        Data[30] = 0x01;
+        QHostAddress loop(m_IP);
+        quint32 address = loop.toIPv4Address();
+        QByteArray ba;
+        QDataStream ds(&ba, QIODevice::WriteOnly);
+        ds << address;
+        Data.append (ba);
+
+
+
+        QByteArray ba2;
+        QDataStream ds2(&ba2, QIODevice::WriteOnly);
+        ds2 << m_port;
+        Data.append (ba2);
+
 
         for (int i = 0; i < Data.length(); ++i) {
-            qDebug()<< QString::number(Data[i],16);
+            qDebug()<< QString::number(Data[i],16) << i;
         }
 
         m_udp->writeDatagram(Data,QHostAddress::LocalHost,4100);
 
+
+}
+
+void MainWindow::on_pushButton_4_clicked()
+{
+
+    m_tcp->connectToHost(QHostAddress("192.168.8.244"),4101,QIODevice::ReadWrite);
+    if (m_tcp->waitForConnected(30000)){
+        qDebug()<<"Connect to Server is successfull";
+
+    } else{
+        qDebug()<<"Connect to Server is Fail";
+        qDebug() << m_tcp->errorString();
+    }
 
 }
